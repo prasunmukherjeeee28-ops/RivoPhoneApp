@@ -87,6 +87,8 @@ import com.grinch.rivo4.controller.util.PreferenceManager
 import com.grinch.rivo4.controller.util.areNumbersEqual
 import com.grinch.rivo4.controller.util.formatPhoneNumber
 import com.grinch.rivo4.view.components.CallLogTileSimple
+import com.grinch.rivo4.view.components.LiquidGlassMeshBackground
+import com.grinch.rivo4.view.components.liquidGlassEffect
 import com.grinch.rivo4.view.components.LocalRivoAvatarStyle
 import com.grinch.rivo4.view.components.MenuTopAppBar
 import com.grinch.rivo4.view.components.PermissionDeniedView
@@ -139,18 +141,21 @@ fun SearchScreen(
     val avatarStyle = rememberRivoAvatarStyle()
 
     CompositionLocalProvider(LocalRivoAvatarStyle provides avatarStyle) {
-        ContactSearchContent(
-            navigator = navigator,
-            isGranted = permState.status == PermissionStatus.Granted,
-            onRequestPermission = { permState.launchPermissionRequest() },
-            listState = listState,
-            showScrollToTop = showButton,
-            onScrollToTop = {
-                scope.launch {
-                    listState.animateScrollToItem(0)
+        Box(modifier = Modifier.fillMaxSize()) {
+            LiquidGlassMeshBackground(modifier = Modifier.fillMaxSize())
+            ContactSearchContent(
+                navigator = navigator,
+                isGranted = permState.status == PermissionStatus.Granted,
+                onRequestPermission = { permState.launchPermissionRequest() },
+                listState = listState,
+                showScrollToTop = showButton,
+                onScrollToTop = {
+                    scope.launch {
+                        listState.animateScrollToItem(0)
+                    }
                 }
-            }
-        )
+            )
+        }
     }
 }
 
@@ -204,6 +209,9 @@ fun ContactSearchContent(
 
     val prefs = koinInject<PreferenceManager>()
     val settingsState by prefs.settingsChanged.collectAsState()
+    val liquidGlassSettings by prefs.liquidGlassSettings.collectAsState()
+    val glassBackdropVisible =
+        liquidGlassSettings.isLiquidGlassEnabled && liquidGlassSettings.isDynamicMeshEnabled
     val displayOrder = remember(settingsState) { prefs.getInt(PreferenceManager.KEY_CONTACT_DISPLAY_ORDER, 0) }
     val callLauncher = rememberCallLauncher()
     val messageLauncher = rememberMessageLauncher()
@@ -300,17 +308,22 @@ fun ContactSearchContent(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = if (glassBackdropVisible) Color.Transparent else MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
                 title = {
                     Surface(
                         shape = RoundedCornerShape(20.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        color = if (liquidGlassSettings.isLiquidGlassEnabled) {
+                            Color.Transparent
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHigh
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(46.dp)
                             .padding(end = 12.dp)
+                            .liquidGlassEffect(shape = RoundedCornerShape(20.dp))
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -398,8 +411,8 @@ fun ContactSearchContent(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                    containerColor = if (glassBackdropVisible) Color.Transparent else MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = if (glassBackdropVisible) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer
                 )
             )
         }

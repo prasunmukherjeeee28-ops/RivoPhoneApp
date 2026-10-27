@@ -3,6 +3,7 @@ import androidx.compose.material.icons.automirrored.outlined.CompareArrows
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import com.grinch.rivo4.view.components.MenuTopAppBar
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -122,6 +123,18 @@ fun InterfaceScreen(
     }
     var cardRoundness by remember(settingsState) {
         mutableIntStateOf(prefs.getInt(PreferenceManager.KEY_CARD_ROUNDNESS, 28).coerceAtLeast(5))
+    }
+    var liquidGlassEnabled by remember(settingsState) {
+        mutableStateOf(prefs.isLiquidGlassEnabled())
+    }
+    var glassBlurRadius by remember(settingsState) {
+        mutableFloatStateOf(prefs.getGlassBlurRadius())
+    }
+    var glassTransparency by remember(settingsState) {
+        mutableFloatStateOf(prefs.getGlassTransparency())
+    }
+    var dynamicMeshEnabled by remember(settingsState) {
+        mutableStateOf(prefs.isDynamicMeshEnabled())
     }
 
     var themeMode by remember(settingsState) {
@@ -424,7 +437,119 @@ fun InterfaceScreen(
                     }
                 }
 
-                // 2. Cards & Motion
+                // 2. Liquid Glass / Crystal UI
+                item {
+                    RivoExpressiveGroup(
+                        title = "Liquid Glass / Crystal UI",
+                        icon = Icons.Outlined.Layers
+                    ) {
+                        item {
+                            RivoSwitchListItem(
+                                headline = "Enable Liquid Glass",
+                                supporting = "Use translucent crystal surfaces with a softly blurred gradient backdrop.",
+                                leadingIcon = Icons.Outlined.Layers,
+                                checked = liquidGlassEnabled,
+                                onCheckedChange = {
+                                    liquidGlassEnabled = it
+                                    prefs.setLiquidGlassEnabled(it)
+                                }
+                            )
+                        }
+                        item {
+                            AnimatedVisibility(visible = liquidGlassEnabled) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 18.dp, vertical = 10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Tune,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                text = "Blur Radius",
+                                                modifier = Modifier.weight(1f),
+                                                style = MaterialTheme.typography.titleSmall
+                                            )
+                                            Text(
+                                                text = "${glassBlurRadius.roundToInt()} dp",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        Slider(
+                                            value = glassBlurRadius,
+                                            onValueChange = { glassBlurRadius = it },
+                                            valueRange = 0f..30f,
+                                            steps = 29,
+                                            onValueChangeFinished = {
+                                                prefs.setGlassBlurRadius(glassBlurRadius)
+                                            }
+                                        )
+                                    }
+
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Contrast,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                text = "Crystal Opacity",
+                                                modifier = Modifier.weight(1f),
+                                                style = MaterialTheme.typography.titleSmall
+                                            )
+                                            Text(
+                                                text = "${(glassTransparency * 100f).roundToInt()}%",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        Slider(
+                                            value = glassTransparency,
+                                            onValueChange = { glassTransparency = it },
+                                            valueRange = 0.05f..0.60f,
+                                            steps = 10,
+                                            onValueChangeFinished = {
+                                                prefs.setGlassTransparency(glassTransparency)
+                                            }
+                                        )
+                                    }
+
+                                    RivoSwitchListItem(
+                                        headline = "Animated Gradient Mesh Background",
+                                        supporting = "Move a soft, blurred color mesh behind glass surfaces.",
+                                        leadingIcon = Icons.Outlined.Animation,
+                                        checked = dynamicMeshEnabled,
+                                        onCheckedChange = {
+                                            dynamicMeshEnabled = it
+                                            prefs.setDynamicMeshEnabled(it)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 3. Cards & Motion
                 item {
                     RivoExpressiveGroup(title = stringResource(R.string.settings_group_shape_motion), icon = Icons.Outlined.ViewAgenda) {
                         item {
@@ -507,7 +632,7 @@ fun InterfaceScreen(
                     }
                 }
 
-                // 3. Navigation & Appearance Customizations
+                // 4. Navigation & Appearance Customizations
                 item {
                     RivoExpressiveGroup(title = stringResource(R.string.loc_personalization_display), icon = Icons.Outlined.Palette) {
                         item {
@@ -553,7 +678,7 @@ fun InterfaceScreen(
                     }
                 }
 
-                // 4. Recents
+                // 5. Recents
                 item {
                     RivoExpressiveGroup(title = stringResource(R.string.nav_recents), icon = Icons.Outlined.History) {
                         item {
