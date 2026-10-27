@@ -8,6 +8,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/**
+ * A single snapshot of the user's Liquid Glass configuration.
+ * SharedPreferences remains the source of truth; this StateFlow keeps Compose consumers reactive.
+ */
+data class LiquidGlassSettings(
+    val isLiquidGlassEnabled: Boolean = false,
+    val glassBlurRadius: Float = 15f,
+    val glassTransparency: Float = 0.15f,
+    val isDynamicMeshEnabled: Boolean = true
+)
+
 class PreferenceManager(context: Context) {
     private val prefs: SharedPreferences = run {
         val deviceContext = context.createDeviceProtectedStorageContext()
@@ -17,7 +28,28 @@ class PreferenceManager(context: Context) {
 
     val settingsChanged: StateFlow<Int> = _globalSettingsChanged.asStateFlow()
 
+    private fun readLiquidGlassSettings(): LiquidGlassSettings = LiquidGlassSettings(
+        isLiquidGlassEnabled = getBoolean(KEY_LIQUID_GLASS_ENABLED, false),
+        glassBlurRadius = getFloat(KEY_GLASS_BLUR_RADIUS, DEFAULT_GLASS_BLUR_RADIUS)
+            .coerceIn(0f, 30f),
+        glassTransparency = getFloat(KEY_GLASS_TRANSPARENCY, DEFAULT_GLASS_TRANSPARENCY)
+            .coerceIn(0.05f, 0.60f),
+        isDynamicMeshEnabled = getBoolean(KEY_DYNAMIC_MESH_ENABLED, true)
+    )
+
+    private val _liquidGlassSettings = MutableStateFlow(readLiquidGlassSettings())
+    val liquidGlassSettings: StateFlow<LiquidGlassSettings> = _liquidGlassSettings.asStateFlow()
+
     private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (
+            key == null ||
+            key == KEY_LIQUID_GLASS_ENABLED ||
+            key == KEY_GLASS_BLUR_RADIUS ||
+            key == KEY_GLASS_TRANSPARENCY ||
+            key == KEY_DYNAMIC_MESH_ENABLED
+        ) {
+            _liquidGlassSettings.value = readLiquidGlassSettings()
+        }
         if (key != KEY_APP_USAGE_SECONDS && key != KEY_RATE_APP_SNOOZED_TIME && key != KEY_LAST_SELECTED_TAB && key != KEY_SETTINGS_HISTORY) {
             _globalSettingsChanged.value += 1
         }
@@ -115,6 +147,30 @@ class PreferenceManager(context: Context) {
         prefs.edit().putFloat(key, value).apply()
         notifySettingsChanged()
     }
+
+    fun isLiquidGlassEnabled(): Boolean =
+        getBoolean(KEY_LIQUID_GLASS_ENABLED, false)
+
+    fun setLiquidGlassEnabled(enabled: Boolean) =
+        setBoolean(KEY_LIQUID_GLASS_ENABLED, enabled)
+
+    fun getGlassBlurRadius(): Float =
+        getFloat(KEY_GLASS_BLUR_RADIUS, DEFAULT_GLASS_BLUR_RADIUS).coerceIn(0f, 30f)
+
+    fun setGlassBlurRadius(radius: Float) =
+        setFloat(KEY_GLASS_BLUR_RADIUS, radius.coerceIn(0f, 30f))
+
+    fun getGlassTransparency(): Float =
+        getFloat(KEY_GLASS_TRANSPARENCY, DEFAULT_GLASS_TRANSPARENCY).coerceIn(0.05f, 0.60f)
+
+    fun setGlassTransparency(transparency: Float) =
+        setFloat(KEY_GLASS_TRANSPARENCY, transparency.coerceIn(0.05f, 0.60f))
+
+    fun isDynamicMeshEnabled(): Boolean =
+        getBoolean(KEY_DYNAMIC_MESH_ENABLED, true)
+
+    fun setDynamicMeshEnabled(enabled: Boolean) =
+        setBoolean(KEY_DYNAMIC_MESH_ENABLED, enabled)
 
     fun setLastUsedNumber(contactId: String, number: String) {
         prefs.edit().putString("last_used_number_$contactId", number).apply()
@@ -613,6 +669,13 @@ class PreferenceManager(context: Context) {
         const val KEY_FLOATING_BAR_BLUR = "floating_bar_blur"
         const val KEY_UI_BLUR = "ui_blur"
 
+        const val KEY_LIQUID_GLASS_ENABLED = "liquid_glass_enabled"
+        const val KEY_GLASS_BLUR_RADIUS = "glass_blur_radius"
+        const val KEY_GLASS_TRANSPARENCY = "glass_transparency"
+        const val KEY_DYNAMIC_MESH_ENABLED = "dynamic_mesh_enabled"
+        const val DEFAULT_GLASS_BLUR_RADIUS = 15f
+        const val DEFAULT_GLASS_TRANSPARENCY = 0.15f
+
         const val KEY_SWIPE_ACTIONS_ENABLED = "swipe_actions_enabled"
         const val KEY_SWIPE_RIGHT_ACTION = "swipe_right_action"
         const val KEY_SWIPE_LEFT_ACTION = "swipe_left_action"
@@ -762,6 +825,8 @@ class PreferenceManager(context: Context) {
             KEY_FLOATING_CALL_BUBBLE to true,
             KEY_UI_BLUR to false,
             KEY_FLOATING_BAR_BLUR to false,
+            KEY_LIQUID_GLASS_ENABLED to false,
+            KEY_DYNAMIC_MESH_ENABLED to true,
             KEY_SWIPE_ACTIONS_ENABLED to false,
             KEY_MISSED_CALL_CARD to true,
             KEY_AUTO_DECLINE_UNKNOWN to false,
@@ -778,7 +843,9 @@ class PreferenceManager(context: Context) {
         )
 
         fun getKnownDefaultFloats(): Map<String, Float> = mapOf(
-            KEY_TRANSITION_TIME_SCALE to 2.5f
+            KEY_TRANSITION_TIME_SCALE to 2.5f,
+            KEY_GLASS_BLUR_RADIUS to DEFAULT_GLASS_BLUR_RADIUS,
+            KEY_GLASS_TRANSPARENCY to DEFAULT_GLASS_TRANSPARENCY
         )
 
         fun getKnownDefaultIntegers(): Map<String, Int> = mapOf(
